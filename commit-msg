@@ -1,0 +1,32 @@
+#!/bin/sh
+echo "❗❕ commit-msg"
+COMMIT_MSG_FILE=$1
+BRANCH_NAME=$(git branch --show-current)
+if [[ $BRANCH_NAME ]]; then
+    if [[ $BRANCH_NAME != @(dev|DEV|Dev|master|Master|qa|QA|Qa) ]]; then
+        array=(${BRANCH_NAME//_/ })
+        if [[ ${#array[@]} -ge 3 ]]; then
+            value=`cat ${COMMIT_MSG_FILE}`
+            if [[ $value != *"Merge"* && $value != *"merge"* && $value != *"Rebase"* && $value != *"rebase"* && $value != *"squash"* && $value != *"Squash"* ]]; then
+                declare -A dic
+                ticketNo=${array[0]}
+                dic+=( ["Story"]=🚚 ["Epic"]=🔥 ["Bug"]=💥 ["Technical task"]=👽️ ["Improvement"]=🚀 ["Sub-Task"]=⭐ ["New Feature"]=✨ ["Task"]=🔨 )
+                BASE_URL="https://webnetworks.atlassian.net"
+                URL="$BASE_URL/rest/api/3/issue/ICM-$ticketNo?expand=versionedRepresentations"
+                issueType=$(curl -u -H "Accept: application/json" -H "Content-Type: application/json" -X GET $URL | jq -r '.versionedRepresentations.issuetype."1".name')
+                echo "issueType: $issueType ${dic[${issueType}]}"
+                code=$(curl -d '{"input":"https://webnetworks.atlassian.net/browse/ICM-'$ticketNo'"}' -H "Content-Type: application/json" -X POST https://gotiny.cc/api | jq -r '.[0].code')
+                echo $code
+                shortURL="https://gotiny.cc/$code"
+                shortURL="${shortURL//\//\\/}"
+                if [[ $issueType ]];
+                then
+                    msg=" || $issueType ${array[0]} ${dic[${issueType}]} || $shortURL"
+                else
+                    msg=" || #${array[0]} || $shortURL"
+                fi
+                sed -i " 1 s/.*/&$msg/" $COMMIT_MSG_FILE
+            fi
+        fi
+    fi
+fi
